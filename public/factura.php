@@ -1,8 +1,4 @@
 <?php
-// 🔥 CORRECCIÓN CRÍTICA 1: INICIAR BUFFERING DE SALIDA FORZADO
-// Esto previene que cualquier error o byte de archivos incluidos (vendor, ErrorHandler) se filtre.
-ob_start();
-
 // ✅ RUTAS CORRECTAS desde public/
 require_once '../vendor/autoload.php';
 require_once '../services/ErrorHandler.php';
@@ -20,12 +16,7 @@ use Greenter\Model\Client\Client;
 // CONFIGURAR API JSON
 header('Content-Type: application/json');
 
-// 🔥 CORRECCIÓN CRÍTICA 2: Limpiar el buffer después de los requires si algo se coló
-if (ob_get_length()) {
-    ob_clean();
-}
-
-// ✅ FUNCIÓN PARA GUARDAR METADATOS EN CSV (Limpiado de caracteres invisibles)
+// ✅ FUNCIÓN PARA GUARDAR METADATOS EN CSV
 function guardarMetadatos($docData, $mensaje_cdr) {
     $ruc_empresa = $docData['company']['ruc'];
     $archivo_metadatos = "../metadatos/{$ruc_empresa}.csv";
@@ -75,16 +66,14 @@ $jsonInput = file_get_contents('php://input');
 $data = json_decode($jsonInput, true);
 
 if (!$data) {
-    $response = json_encode([
+    echo json_encode([
         'estado_sunat' => 'ERROR',
         'mensaje_sunat' => 'JSON inválido: ' . json_last_error_msg()
     ]);
-    ob_end_clean(); 
-    echo $response;
     exit;
 }
 
-// ✅ DETECTAR ESTRUCTURA DINÁMICAMENTE (Sin cambios en tu lógica)
+// ✅ DETECTAR ESTRUCTURA DINÁMICAMENTE
 $docData = null;
 $config = null;
 $firstItem = null;
@@ -115,12 +104,10 @@ else if (isset($data['ublVersion'])) {
 }
 
 if (!$docData || !$config) {
-    $response = json_encode([
+    echo json_encode([
         'estado_sunat' => 'ERROR',
         'mensaje_sunat' => 'Estructura JSON incorrecta - falta documentoSunat en el array'
     ]);
-    ob_end_clean();
-    echo $response;
     exit;
 }
 
@@ -147,7 +134,7 @@ try {
         $config['clave_sol']          // Clave SOL
     );
 
-    // ✅ CONSTRUIR DOCUMENTO (Sección Company y Client limpiadas de caracteres invisibles)
+    // ✅ CONSTRUIR DOCUMENTO
     $company = new Company();
     $company->setRuc($docData['company']['ruc'])
             ->setRazonSocial($docData['company']['razonSocial'])
@@ -265,12 +252,12 @@ try {
             unset($respuesta_sin_config['config']);
         }
         
-        // ✅ XML EN TEXTO PLANO (NO BASE64)
-        $response = json_encode([
+        // ✅ XML EN TEXTO PLANO (NO BASE64) - CAMBIO SOLICITADO
+        echo json_encode([
             'estado_sunat' => 'ACEPTADO',
             'mensaje_sunat' => $result->getCdrResponse()->getDescription(),
-            'xml_firmado' => $xml_firmado,
-            'xml_cdr' => $cdr_xml_content,
+            'xml_firmado' => $xml_firmado,           // ← XML EN TEXTO
+            'xml_cdr' => $cdr_xml_content,           // ← XML EN TEXTO
             'json_original' => $respuesta_sin_config
         ]);
         
@@ -283,11 +270,11 @@ try {
         // ✅ GUARDAR METADATOS (RECHAZADO)
         guardarMetadatos($docData, $error->getMessage());
         
-        // ✅ RESPONDER JSON DE RECHAZO
-        $response = json_encode([
+        // ✅ SOLO ENVIAR ESTO - ELIMINADO TODO LO DEMÁS (CUMPLE ACUERDO)
+        echo json_encode([
             'estado_sunat' => 'RECHAZADO',
             'mensaje_sunat' => $error->getMessage(),
-            'analisis_detallado' => $analisisError['error']
+            'analisis_detallado' => $analisisError['error']  // ✅ SOLO 3 CAMPOS
         ]);
     }
     
@@ -298,15 +285,11 @@ try {
     // ✅ GUARDAR METADATOS (ERROR)
     guardarMetadatos($docData, $e->getMessage());
     
-    // ✅ RESPONDER JSON DE ERROR
-    $response = json_encode([
+    // ✅ SOLO ENVIAR ESTO - ELIMINADO TODO LO DEMÁS (CUMPLE ACUERDO)
+    echo json_encode([
         'estado_sunat' => 'ERROR',
         'mensaje_sunat' => $e->getMessage(),
-        'analisis_detallado' => $analisisError['error']
+        'analisis_detallado' => $analisisError['error']  // ✅ SOLO 3 CAMPOS
     ]);
 }
-
-// 🔥 CRÍTICO 3: Limpiar el buffer final y enviar el JSON
-ob_end_clean();
-echo $response;
-// 🔥 ETIQUETA DE CIERRE (?>) ELIMINADA.
+?>
