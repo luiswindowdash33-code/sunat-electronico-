@@ -1,45 +1,44 @@
 <?php
-// public/factura.php
-
-// 1. Limpiar cualquier salida previa
+// MODO DE DEPURACIÓN GLOBAL: DEVOLVER EXACTAMENTE LO QUE RECIBIMOS
 if (ob_get_level()) ob_end_clean();
-
-// 2. Configurar cabeceras
+header('Content-Type: application/json; charset=utf-8');
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-header('Content-Type: application/json; charset=utf-8');
 
-// 3. Manejar peticiones OPTIONS (pre-flight)
+// Manejar preflight requests
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    http_response_code(200);
+    http_response_code(204);
     exit;
 }
 
-// 4. Configurar manejo de errores
-ini_set('display_errors', 0); // No mostrar errores en la salida
-error_reporting(0);
-ini_set('log_errors', 1); // Guardar errores en el log del servidor
+$response = [
+    'diagnostico' => 'Respuesta desde el script de depuración factura.php',
+    'timestamp' => date('c'),
+    'metodo_http' => $_SERVER['REQUEST_METHOD'],
+    'content_type_recibido' => $_SERVER['CONTENT_TYPE'] ?? 'No especificado',
+    'input_bruto' => '',
+    'json_decodificado' => null,
+    'error_json' => null,
+];
 
-// 5. Incluir el procesador y ejecutar la lógica
-try {
-    require_once __DIR__ . '/procesador.php';
-    $resultado = procesarFactura();
-    
-    // 6. Enviar la respuesta JSON
-    http_response_code($resultado['statusCode']);
-    echo json_encode($resultado['data']);
+$jsonInput = file_get_contents('php://input');
+$response['input_bruto'] = $jsonInput;
 
-} catch (Throwable $e) {
-    // Captura de emergencia por si 'procesador.php' no se puede cargar
-    error_log("💥 ERROR CRÍTICO en factura.php: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode([
-        'estado_sunat' => 'ERROR_FATAL',
-        'mensaje_sunat' => 'No se pudo cargar el motor de facturación.',
-        'raw_error' => $e->getMessage()
-    ]);
+if ($jsonInput === false) {
+    $response['error_json'] = 'file_get_contents(\'php://input\') devolvió false. No se pudo leer el cuerpo de la solicitud.';
+} elseif (empty($jsonInput)) {
+    $response['error_json'] = 'El cuerpo de la solicitud (body) está vacío.';
+} else {
+    $decoded = json_decode($jsonInput, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        $response['error_json'] = 'Error al decodificar JSON: ' . json_last_error_msg();
+    } else {
+        $response['json_decodificado'] = $decoded;
+    }
 }
 
-exit; // Terminar la ejecución explícitamente
+http_response_code(200);
+echo json_encode($response, JSON_PRETTY_PRINT);
+exit;
 ?>
