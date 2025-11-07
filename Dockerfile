@@ -1,11 +1,8 @@
-
 # Usa una imagen oficial de PHP con Apache
 FROM php:8.2-apache
 
-# Configura Apache para que use /var/www/html/src como el directorio raíz
-ENV APACHE_DOCUMENT_ROOT /var/www/html/src
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Copia el archivo de configuración personalizado de Apache y habilítalo
+COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
 
 # Instala las dependencias del sistema necesarias para Greenter y Composer
 RUN apt-get update && apt-get install -y \
@@ -36,9 +33,6 @@ WORKDIR /var/www/html
 COPY . .
 
 # Instala las dependencias de PHP (como Greenter)
-# Si tienes un composer.json en la carpeta src, descomenta la siguiente línea
-# RUN cd src && composer install --no-dev --optimize-autoloader
-# Si tu composer.json está en la raíz, usa esta:
 RUN composer install --no-dev --optimize-autoloader
 
 # Asegúrate de que el servidor web (Apache) tenga permisos
