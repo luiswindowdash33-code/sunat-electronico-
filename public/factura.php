@@ -1,9 +1,17 @@
 <?php
+// ✅ LIMPIAR CUALQUIER SALIDA ANTES DEL JSON
+if (ob_get_level()) ob_end_clean();
+ob_start();
+
 // ✅ CONFIGURACIÓN CORS PARA n8n
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+
+// ✅ DESHABILITAR ERRORES EN PRODUCCIÓN PERO GUARDARLOS EN LOG
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
 // Manejar preflight requests
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -359,4 +367,6 @@ try {
 }
 
 error_log("🏁 PROCESO FACTURA.PHP FINALIZADO");
+// ✅ LIMPIAR BUFFER Y ENVIAR SOLO JSON
+ob_end_clean();
 ?>
