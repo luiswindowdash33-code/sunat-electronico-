@@ -6,18 +6,18 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # 1. Instalar dependencias del sistema y librerías de desarrollo
 RUN apt-get update && apt-get install -y \
-Git\
-curl\
-unzip\
-libzip-dev\
-libxml2-dev \
-libpng-dev \
-libjpeg-dev \
-libfreetype6-dev\
-default-mysql-client \
-# Limpieza para reducir el tamaño de la imagen
-&& apt-get clean \
-&& rm -rf /var/lib/apt/lists/*
+    git \
+    curl \
+    unzip \
+    libzip-dev \
+    libxml2-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    default-mysql-client \
+    # Limpieza para reducir el tamaño de la imagen
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # 2. Instalar y configurar extensiones PHP
 # Esenciales para bases de datos (mysqli) y Composer/manejo de archivos (zip)
@@ -25,7 +25,7 @@ RUN docker-php-ext-install -j$(nproc) mysqli pdo pdo_mysql zip
 
 # Configurar e instalar la extensión GD con soporte para FreeType y JPEG
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-&& docker-php-ext-install -j$(nproc) gd
+    && docker-php-ext-install -j$(nproc) gd
 
 # 3. Copiar el código fuente
 WORKDIR /var/www/html
@@ -43,6 +43,7 @@ RUN chown -R www-data:www-data /var/www/html
 
 # Instalar dependencias de Composer (si tienes un archivo composer.json)
 # Se asume que no quieres instalar dependencias de desarrollo (--no-dev)
+# Asegúrate de que tu archivo composer.json esté en el directorio raíz de tu proyecto.
 RUN composer install --no-dev --optimize-autoloader
 
 # 5. Configuración final
