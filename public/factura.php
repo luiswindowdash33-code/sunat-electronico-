@@ -292,4 +292,5 @@ try {
         'analisis_detallado' => $analisisError['error']  // ✅ SOLO 3 CAMPOS
     ]);
 }
+?>
 
