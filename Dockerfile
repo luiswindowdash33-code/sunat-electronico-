@@ -4,7 +4,7 @@ FROM php:8.2-apache
 # Instala Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# --- PASO 1: INSTALAR DEPENDENCIAS DEL SISTEMA ---
+# --- PASO 1: INSTALAR DEPENDENCIAS DEL SISTEMA (apt-get) ---
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -16,13 +16,22 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     default-mysql-client \
-    # Limpieza inmediata de cache
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+# --- FIN PASO 1 ---
 
-# --- PASO 2: CONFIGURAR E INSTALAR EXTENSIONES DE PHP ---
+# --- PASO 2: INSTALAR EXTENSIONES PHP (EN PASOS PEQUEÑOS PARA EVITAR TIMEOUT) ---
+
+# 2a: GD (la más pesada)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd soap zip intl mysqli pdo_mysql
-    # Usamos -j$(nproc) para aprovechar múltiples núcleos en la compilación si es posible.
+    && docker-php-ext-install -j$(nproc) gd
+
+# 2b: Zip, IntL, Soap
+RUN docker-php-ext-install -j$(nproc) zip intl soap
+
+# 2c: MySQL/PDO (conexión a base de datos)
+RUN docker-php-ext-install -j$(nproc) mysqli pdo_mysql
+# --- FIN PASO 2 ---
 
 # Establece el directorio de trabajo
 WORKDIR /var/www/html
@@ -42,5 +51,5 @@ RUN chown -R www-data:www-data /var/www/html
 # Exponer el puerto 80
 EXPOSE 80
 
-# Comando de inicio para forzar el inicio de Apache
+# Comando de inicio
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
