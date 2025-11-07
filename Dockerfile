@@ -49,3 +49,6 @@ RUN chown -R www-data:www-data /var/www/html
 
 # Exponer el puerto 80
 EXPOSE 80
+
+# AÑADIDO: Comando de inicio para forzar el inicio de Apache
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
