@@ -32,28 +32,24 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 WORKDIR /var/www/html
 
 # Copiar archivos de configuración antes de copiar la aplicación
-# Esto mejora el caching de Docker si solo cambian los archivos de configuración
 COPY apache-config.conf /etc/apache2/sites-enabled/000-default.conf
-
-# Copiar el archivo fly.toml si es necesario para el build
-# COPY fly.toml /etc/fly/fly.toml
 
 # Copiar la aplicación
 COPY . /var/www/html
 
 # 4. Configurar permisos y dependencias
-# Permisos de PROPIEDAD para el usuario 'www-data' de Apache sobre el directorio principal
+# Permisos de PROPIEDAD para el usuario 'www-data' de Apache
 RUN chown -R www-data:www-data /var/www/html
 
-# 🛑 BLOQUE CRÍTICO AÑADIDO: Permisos de ESCRITURA (775)
-# Esto resuelve los errores "Permission denied" al escribir logs o metadatos.
+# 🛑 BLOQUE CRÍTICO: Permisos de ESCRITURA (775)
+# Esto es esencial si tu código PHP escribe logs, caches o metadatos.
+# Se asume que las carpetas existen, lo cual debe ser verificado (ver paso siguiente).
 RUN chmod -R 775 /var/www/html/metadatos \
     && chmod -R 775 /var/www/html/logs \
     && chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/config/certificados
 
-# Instalar dependencias de Composer (si tienes un archivo composer.json)
-# Se asume que no quieres instalar dependencias de desarrollo (--no-dev)
+# Instalar dependencias de Composer
 RUN composer install --no-dev --optimize-autoloader
 
 # 5. Configuración final
