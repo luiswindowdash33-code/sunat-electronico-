@@ -31,9 +31,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 WORKDIR /var/www/html
 
 # Copiar archivos de configuración antes de copiar la aplicación
+# Asegúrate de que este archivo contiene DocumentRoot /var/www/html/public
 COPY apache-config.conf /etc/apache2/sites-enabled/000-default.conf
 
-# Copiar la aplicación (incluye public/, services/, vendor/, metadatos/, etc.)
+# Copiar la aplicación
 COPY . /var/www/html
 
 # 4. Configurar permisos y dependencias
@@ -46,6 +47,9 @@ RUN mkdir -p /var/www/html/metadatos && \
 
 # Instalar dependencias de Composer
 RUN composer install --no-dev --optimize-autoloader
+
+# 🔥🔥🔥 LÍNEA CRÍTICA AGREGADA: Habilitar el módulo de reescritura de URLs
+RUN a2enmod rewrite
 
 # 5. Configuración final
 # Expone el puerto por defecto de Apache
