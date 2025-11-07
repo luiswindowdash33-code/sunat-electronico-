@@ -1,8 +1,5 @@
 <?php
 
-// Temporalmente deshabilitar la impresión de errores en el navegador/API
-ini_set('display_errors', 0);
-error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
 // ✅ RUTAS CORRECTAS desde public/
 require_once '../vendor/autoload.php';
 require_once '../services/ErrorHandler.php';
