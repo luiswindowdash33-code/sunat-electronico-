@@ -1,5 +1,4 @@
 <?php
-
 // ✅ RUTAS CORRECTAS desde public/
 require_once '../vendor/autoload.php';
 require_once '../services/ErrorHandler.php';
