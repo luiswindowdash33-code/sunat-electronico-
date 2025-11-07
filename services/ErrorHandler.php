@@ -117,4 +117,3 @@ class ErrorHandler {
         return $solucion;
     }
 }
-?>
