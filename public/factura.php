@@ -1,4 +1,16 @@
 <?php
+// ✅ CONFIGURACIÓN CORS PARA n8n
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header('Content-Type: application/json');
+
+// Manejar preflight requests
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit(0);
+}
+
 // ✅ RUTAS CORRECTAS desde public/
 require_once '../vendor/autoload.php';
 require_once '../services/ErrorHandler.php';
@@ -12,9 +24,6 @@ use Greenter\Model\Sale\PaymentTerms;
 use Greenter\Model\Company\Company;
 use Greenter\Model\Company\Address;
 use Greenter\Model\Client\Client;
-
-// CONFIGURAR API JSON
-header('Content-Type: application/json');
 
 // ✅ FUNCIÓN PARA GUARDAR METADATOS EN CSV
 function guardarMetadatos($docData, $mensaje_cdr) {
@@ -61,17 +70,38 @@ function guardarMetadatos($docData, $mensaje_cdr) {
     error_log("✅ METADATOS CSV GUARDADOS: {$archivo_metadatos}");
 }
 
-// LEER JSON DESDE n8n
+// ✅ LEER Y VALIDAR JSON DESDE n8n
 $jsonInput = file_get_contents('php://input');
-$data = json_decode($jsonInput, true);
+error_log("📥 RAW INPUT RECIBIDO: " . substr($jsonInput, 0, 500)); // Log para debugging
 
-if (!$data) {
+if (empty($jsonInput)) {
+    http_response_code(400);
     echo json_encode([
         'estado_sunat' => 'ERROR',
-        'mensaje_sunat' => 'JSON inválido: ' . json_last_error_msg()
+        'mensaje_sunat' => 'No se recibió ningún JSON - body vacío',
+        'detalle' => 'El cuerpo de la solicitud está vacío'
     ]);
     exit;
 }
+
+$data = json_decode($jsonInput, true);
+
+if (json_last_error() !== JSON_ERROR_NONE) {
+    error_log("❌ ERROR JSON: " . json_last_error_msg());
+    error_log("📝 CONTENIDO RECIBIDO: " . $jsonInput);
+    
+    http_response_code(400);
+    echo json_encode([
+        'estado_sunat' => 'ERROR',
+        'mensaje_sunat' => 'JSON inválido: ' . json_last_error_msg(),
+        'raw_input_sample' => substr($jsonInput, 0, 200),
+        'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'No especificado'
+    ]);
+    exit;
+}
+
+error_log("✅ JSON DECODIFICADO CORRECTAMENTE");
+error_log("📊 ESTRUCTURA DATA: " . print_r(array_keys($data), true));
 
 // ✅ DETECTAR ESTRUCTURA DINÁMICAMENTE
 $docData = null;
@@ -80,36 +110,57 @@ $firstItem = null;
 
 // Caso 1: Es array con documentoSunat
 if (is_array($data) && isset($data[0]) && isset($data[0]['documentoSunat'])) {
+    error_log("🔍 ESTRUCTURA: Array con documentoSunat");
     $firstItem = $data[0];
     $docData = $firstItem['documentoSunat'];
     $config = $docData['config'] ?? null;
 }
 // Caso 2: Es objeto directo con documentoSunat  
 else if (isset($data['documentoSunat'])) {
+    error_log("🔍 ESTRUCTURA: Objeto con documentoSunat");
     $firstItem = $data;
     $docData = $data['documentoSunat'];
     $config = $docData['config'] ?? null;
 }
 // Caso 3: Es array directo con los datos (sin documentoSunat)
 else if (is_array($data) && isset($data[0]) && isset($data[0]['ublVersion'])) {
+    error_log("🔍 ESTRUCTURA: Array directo con datos UBL");
     $firstItem = $data[0];
     $docData = $firstItem;
     $config = $docData['config'] ?? null;
 }
 // Caso 4: Es objeto directo con los datos (sin documentoSunat)
 else if (isset($data['ublVersion'])) {
+    error_log("🔍 ESTRUCTURA: Objeto directo con datos UBL");
     $firstItem = $data;
     $docData = $data;
     $config = $docData['config'] ?? null;
 }
+// Caso 5: Estructura diferente - logging completo
+else {
+    error_log("❌ ESTRUCTURA NO RECONOCIDA");
+    error_log("📋 CLAVES DEL DATA: " . print_r(array_keys($data), true));
+    if (is_array($data) && isset($data[0])) {
+        error_log("📋 CLAVES DEL PRIMER ITEM: " . print_r(array_keys($data[0]), true));
+    }
+}
 
 if (!$docData || !$config) {
+    error_log("❌ FALTA docData O config");
+    error_log("📋 docData: " . print_r($docData, true));
+    error_log("📋 config: " . print_r($config, true));
+    
+    http_response_code(400);
     echo json_encode([
         'estado_sunat' => 'ERROR',
-        'mensaje_sunat' => 'Estructura JSON incorrecta - falta documentoSunat en el array'
+        'mensaje_sunat' => 'Estructura JSON incorrecta - falta documentoSunat o config',
+        'estructura_recibida' => array_keys($data),
+        'primer_item_keys' => isset($data[0]) ? array_keys($data[0]) : 'No es array'
     ]);
     exit;
 }
+
+error_log("✅ ESTRUCTURA VALIDADA - Iniciando proceso SUNAT");
 
 // Inicializar ErrorHandler
 $errorHandler = new ErrorHandler();
@@ -215,12 +266,17 @@ try {
     }
     
     // ✅ OBTENER XML FIRMADO
+    error_log("🔏 GENERANDO XML FIRMADO...");
     $xml_firmado = $see->getXmlSigned($invoice);
+    error_log("✅ XML FIRMADO GENERADO");
     
     // ✅ ENVIAR A SUNAT
+    error_log("📤 ENVIANDO A SUNAT...");
     $result = $see->send($invoice);
+    error_log("📥 RESPUESTA SUNAT RECIBIDA");
     
     if ($result->isSuccess()) {
+        error_log("🎉 DOCUMENTO ACEPTADO POR SUNAT");
         $cdr_zip = $result->getCdrZip();
         
         // EXTRAER XML DEL CDR
@@ -253,6 +309,7 @@ try {
         }
         
         // ✅ XML EN TEXTO PLANO (NO BASE64) - CAMBIO SOLICITADO
+        error_log("📦 ENVIANDO RESPUESTA EXITOSA A n8n");
         echo json_encode([
             'estado_sunat' => 'ACEPTADO',
             'mensaje_sunat' => $result->getCdrResponse()->getDescription(),
@@ -263,6 +320,7 @@ try {
         
     } else {
         $error = $result->getError();
+        error_log("❌ DOCUMENTO RECHAZADO POR SUNAT: " . $error->getMessage());
         
         // ✅ CAPTURAR ANÁLISIS COMPLETO DEL ERROR
         $analisisError = $errorHandler->clasificarError($error->getCode(), $error->getMessage(), $docData['tipoDoc'], $docData['serie'], $docData['correlativo']);
@@ -271,6 +329,7 @@ try {
         guardarMetadatos($docData, $error->getMessage());
         
         // ✅ SOLO ENVIAR ESTO - ELIMINADO TODO LO DEMÁS (CUMPLE ACUERDO)
+        error_log("📦 ENVIANDO RESPUESTA DE RECHAZO A n8n");
         echo json_encode([
             'estado_sunat' => 'RECHAZADO',
             'mensaje_sunat' => $error->getMessage(),
@@ -279,17 +338,25 @@ try {
     }
     
 } catch (Exception $e) {
+    error_log("💥 EXCEPCIÓN CAPTURADA: " . $e->getMessage());
+    error_log("📋 TRAZA: " . $e->getTraceAsString());
+    
     // ✅ CAPTURAR ANÁLISIS COMPLETO DEL ERROR
     $analisisError = $errorHandler->clasificarError('CONNECTION_ERROR', $e->getMessage(), $docData['tipoDoc'] ?? '', $docData['serie'] ?? '', $docData['correlativo'] ?? '');
     
     // ✅ GUARDAR METADATOS (ERROR)
-    guardarMetadatos($docData, $e->getMessage());
+    if (isset($docData)) {
+        guardarMetadatos($docData, $e->getMessage());
+    }
     
     // ✅ SOLO ENVIAR ESTO - ELIMINADO TODO LO DEMÁS (CUMPLE ACUERDO)
+    http_response_code(500);
     echo json_encode([
         'estado_sunat' => 'ERROR',
         'mensaje_sunat' => $e->getMessage(),
         'analisis_detallado' => $analisisError['error']  // ✅ SOLO 3 CAMPOS
     ]);
 }
+
+error_log("🏁 PROCESO FACTURA.PHP FINALIZADO");
 ?>
