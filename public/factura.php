@@ -64,6 +64,11 @@ try {
     if (json_last_error() !== JSON_ERROR_NONE) {
         throw new Exception('JSON inválido: ' . json_last_error_msg(), 400);
     }
+    
+    // N8N puede envolver el JSON en un objeto 'body'. Lo desenvolvemos si existe.
+    if (isset($data['body']) && is_array($data['body'])) {
+        $data = $data['body'];
+    }
 
     $docData = $data['documentoSunat'] ?? $data;
     if (!isset($docData['ublVersion'])) {
