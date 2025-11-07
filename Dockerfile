@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Instalar y configurar extensiones PHP
-# Esenciales para bases de datos (mysqli) y Composer/manejo de archivos (zip)
+# ✅ CRÍTICO: Se añade 'zip' para ZipArchive (Greenter)
 RUN docker-php-ext-install -j$(nproc) mysqli pdo pdo_mysql zip
 
 # Configurar e instalar la extensión GD con soporte para FreeType y JPEG
@@ -40,9 +40,7 @@ COPY . /var/www/html
 # Permisos recursivos para el usuario 'www-data' (Apache) sobre todo el directorio.
 RUN chown -R www-data:www-data /var/www/html
 
-# ✅ CRÍTICO: Asegurar que el directorio metadatos exista y sea escribible
-# Esto evita que la función PHP mkdir() o file_put_contents() falle por permisos,
-# lo que rompía la respuesta JSON con un Warning.
+# Asegurar que el directorio metadatos exista y sea escribible
 RUN mkdir -p /var/www/html/metadatos && \
     chown -R www-data:www-data /var/www/html/metadatos
 
