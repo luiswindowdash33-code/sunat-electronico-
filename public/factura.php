@@ -83,7 +83,6 @@ try {
     }
 
     // El resto de tu lógica de negocio aquí...
-    // (Se ha omitido por brevedad pero tu código original de construcción de factura es correcto)
     $see = new See();
     $see->setCertificate($config['certificado']);
     $endpoint = ($config['entorno'] === 'produccion') ? SunatEndpoints::FE_PRODUCCION : SunatEndpoints::FE_BETA;
@@ -165,7 +164,7 @@ try {
         $response = [
             'estado_sunat' => 'ACEPTADO',
             'mensaje_sunat' => $cdr->getDescription(),
-            'xml_firmado' => $xml_firmado,
+            'xml_request_base64' => base64_encode($xml_firmado),
             'hash_cdr' => $result->getCdrHash(),
             'xml_cdr_base64' => base64_encode($result->getCdrZip())
         ];
