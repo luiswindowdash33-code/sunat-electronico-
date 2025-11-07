@@ -3,7 +3,7 @@
 #
 
 app = 'mi-sunat'
-primary_region = 'mia'
+primary_region = 'scl'
 
 [build]
   dockerfile = 'Dockerfile'
