@@ -23,52 +23,46 @@ header('Content-Type: application/json');
 if (ob_get_length()) {
     ob_clean();
 }
-
-// ✅ FUNCIÓN PARA GUARDAR METADATOS EN CSV
 function guardarMetadatos($docData, $mensaje_cdr) {
-    $ruc_empresa = $docData['company']['ruc'];
-    $archivo_metadatos = "../metadatos/{$ruc_empresa}.csv";
-    
-    // Datos del nuevo registro
-    $nuevo_registro = [
-        'fecha_registro' => date('c'),
-        'documento' => $docData['serie'] . '-' . $docData['correlativo'],
-        'cliente_ruc' => $docData['client']['numDoc'],
-        'cliente_razon_social' => $docData['client']['rznSocial'],
-        'monto' => $docData['mtoImpVenta'],
-        'fecha_emision' => $docData['fechaEmision'],
-        'mensaje_cdr' => $mensaje_cdr
-    ];
-    
-    // Crear directorio si no existe
-    if (!is_dir('../metadatos')) {
-        mkdir('../metadatos', 0755, true);
-    }
-    
-    // Si el archivo no existe, crear encabezados
-    if (!file_exists($archivo_metadatos)) {
-        $encabezados = [
-            'fecha_registro',
-            'documento', 
-            'cliente_ruc',
-            'cliente_razon_social',
-            'monto',
-            'fecha_emision',
-            'mensaje_cdr'
-        ];
-        $archivo = fopen($archivo_metadatos, 'w');
-        fputcsv($archivo, $encabezados);
-        fclose($archivo);
-    }
-    
-    // Agregar nueva fila
-    $archivo = fopen($archivo_metadatos, 'a');
-    fputcsv($archivo, $nuevo_registro);
-    fclose($archivo);
-    
-    error_log("✅ METADATOS CSV GUARDADOS: {$archivo_metadatos}");
+    $ruc_empresa = $docData['company']['ruc'];
+    $archivo_metadatos = "../metadatos/{$ruc_empresa}.csv";
+    
+    // Datos del nuevo registro
+    $nuevo_registro = [
+        'fecha_registro' => date('c'),
+        'documento' => $docData['serie'] . '-' . $docData['correlativo'],
+        'cliente_ruc' => $docData['client']['numDoc'],
+        'cliente_razon_social' => $docData['client']['rznSocial'],
+        'monto' => $docData['mtoImpVenta'],
+        'fecha_emision' => $docData['fechaEmision'],
+        'mensaje_cdr' => $mensaje_cdr
+    ];  
+    // Crear directorio si no existe
+    if (!is_dir('../metadatos')) {
+        mkdir('../metadatos', 0755, true);
+    }
+    // Si el archivo no existe, crear encabezados
+    if (!file_exists($archivo_metadatos)) {
+        $encabezados = [
+            'fecha_registro',
+            'documento', 
+            'cliente_ruc',
+            'cliente_razon_social',
+            'monto',
+            'fecha_emision',
+            'mensaje_cdr'
+        ];
+        $archivo = fopen($archivo_metadatos, 'w');
+        fputcsv($archivo, $encabezados);
+        fclose($archivo);
+    }
+    // Agregar nueva fila
+    $archivo = fopen($archivo_metadatos, 'a');
+    fputcsv($archivo, $nuevo_registro);
+    fclose($archivo);
+    
+    error_log("✅ METADATOS CSV GUARDADOS: {$archivo_metadatos}");
 }
-
 // LEER JSON DESDE n8n
 $jsonInput = file_get_contents('php://input');
 $data = json_decode($jsonInput, true);
