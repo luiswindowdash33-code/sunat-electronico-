@@ -1,10 +1,10 @@
-# Usa una imagen oficial de PHP con Apache
+# Usa la imagen base de PHP con Apache
 FROM php:8.2-apache
 
-# Instala Composer
+# Copia el binario de Composer desde su imagen oficial
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# --- PASO 1: INSTALAR DEPENDENCIAS DEL SISTEMA (apt-get) ---
+# 1. Instalar dependencias del sistema y librerías de desarrollo
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -16,40 +16,43 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     default-mysql-client \
+    # Limpieza para reducir el tamaño de la imagen
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-# --- FIN PASO 1 ---
 
-# --- PASO 2: INSTALAR EXTENSIONES PHP (EN PASOS PEQUEÑOS PARA EVITAR TIMEOUT) ---
+# 2. Instalar y configurar extensiones PHP
+# Esenciales para bases de datos (mysqli) y Composer/manejo de archivos (zip)
+RUN docker-php-ext-install -j$(nproc) mysqli pdo pdo_mysql zip
 
-# 2a: GD (la más pesada)
+# Configurar e instalar la extensión GD con soporte para FreeType y JPEG
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd
 
-# 2b: Zip, IntL, Soap
-RUN docker-php-ext-install -j$(nproc) zip intl soap
-
-# 2c: MySQL/PDO (conexión a base de datos)
-RUN docker-php-ext-install -j$(nproc) mysqli pdo_mysql
-# --- FIN PASO 2 ---
-
-# Establece el directorio de trabajo
+# 3. Copiar el código fuente
 WORKDIR /var/www/html
 
-# Copia los archivos de tu proyecto al contenedor
-COPY . .
+# Copiar archivos de configuración antes de copiar la aplicación
+# Esto mejora el caching de Docker si solo cambian los archivos de configuración
+COPY apache-config.conf /etc/apache2/sites-enabled/000-default.conf
 
-# Instala las dependencias de PHP (composer)
-RUN composer install --no-dev --optimize-autoloader
+# Copiar el archivo fly.toml si es necesario para el build
+# COPY fly.toml /etc/fly/fly.toml
 
-# Copia el archivo de configuración personalizado de Apache
-COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
+# Copiar la aplicación
+COPY . /var/www/html
 
-# Asegúrate de que el servidor web (www-data) tenga permisos
+# 4. Configurar permisos y dependencias
+# Permisos para el usuario 'www-data' de Apache sobre el directorio principal
 RUN chown -R www-data:www-data /var/www/html
 
-# Exponer el puerto 80
+# Instalar dependencias de Composer (si tienes un archivo composer.json)
+# Se asume que no quieres instalar dependencias de desarrollo (--no-dev)
+RUN composer install --no-dev --optimize-autoloader
+
+# 5. Configuración final
+# Expone el puerto por defecto de Apache
 EXPOSE 80
 
-# Comando de inicio
+# Comando para forzar el inicio de Apache en primer plano
+# (Coincide con la última modificación que hiciste)
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
