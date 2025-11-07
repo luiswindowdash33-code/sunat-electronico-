@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    # Extensión Intl es importante para formatos de fecha/moneda
     # Instalar librerías de MySQL para las extensiones de PHP
     default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -30,25 +29,23 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Establece el directorio de trabajo dentro del contenedor
-# Aquí es donde se copiarán y servirán tus archivos
 WORKDIR /var/www/html
 
 # Copia los archivos de tu proyecto al contenedor
 COPY . .
 
 # Instala las dependencias de PHP (como Greenter)
-# Asegúrate de que composer.json esté en la raíz del proyecto
 RUN composer install --no-dev --optimize-autoloader
 
-# Copia el archivo de configuración personalizado de Apache y habilítalo
-# Se debe copiar DESPUÉS de instalar dependencias, aunque la posición es flexible
+# Copia el archivo de configuración personalizado de Apache y habilítalo.
+# Nota: Tu apache-config.conf DEBE tener DocumentRoot /var/www/html/public
 COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
 
-# Asegúrate de que el servidor web (Apache) tenga permisos
+# Asegúrate de que el servidor web (www-data) tenga permisos sobre los archivos de la aplicación
 RUN chown -R www-data:www-data /var/www/html
 
-# Exponer el puerto 80
+# Exponer el puerto 80 (aunque el FROM ya lo hace, es una buena práctica)
 EXPOSE 80
 
-# AÑADIDO: Comando de inicio para forzar el inicio de Apache
+# Comando de inicio para forzar el inicio de Apache en primer plano (necesario para Docker)
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
