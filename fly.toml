@@ -1,5 +1,4 @@
-# fly.toml app configuration file generated for mi-sunat
-#
+# fly.toml app configuration file for your PHP project
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
@@ -9,12 +8,8 @@ primary_region = 'mia'
 [build]
   dockerfile = 'Dockerfile'
 
-[[mounts]]
-  source = 'n8n_data'
-  destination = '/home/node/.n8n'
-
 [http_service]
-  internal_port = 5678
+  internal_port = 80
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
