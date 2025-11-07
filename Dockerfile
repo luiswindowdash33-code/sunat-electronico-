@@ -42,8 +42,15 @@ COPY apache-config.conf /etc/apache2/sites-enabled/000-default.conf
 COPY . /var/www/html
 
 # 4. Configurar permisos y dependencias
-# Permisos para el usuario 'www-data' de Apache sobre el directorio principal
+# Permisos de PROPIEDAD para el usuario 'www-data' de Apache sobre el directorio principal
 RUN chown -R www-data:www-data /var/www/html
+
+# 🛑 BLOQUE CRÍTICO AÑADIDO: Permisos de ESCRITURA (775)
+# Esto resuelve los errores "Permission denied" al escribir logs o metadatos.
+RUN chmod -R 775 /var/www/html/metadatos \
+    && chmod -R 775 /var/www/html/logs \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/config/certificados
 
 # Instalar dependencias de Composer (si tienes un archivo composer.json)
 # Se asume que no quieres instalar dependencias de desarrollo (--no-dev)
@@ -54,5 +61,4 @@ RUN composer install --no-dev --optimize-autoloader
 EXPOSE 80
 
 # Comando para forzar el inicio de Apache en primer plano
-# (Coincide con la última modificación que hiciste)
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
