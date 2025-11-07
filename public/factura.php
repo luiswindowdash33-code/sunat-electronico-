@@ -1,4 +1,4 @@
-?php
+<?php
 // ✅ LIMPIAR CUALQUIER SALIDA ANTES DEL JSON
 if (ob_get_level()) ob_end_clean();
 ob_start();
