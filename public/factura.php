@@ -62,18 +62,18 @@ function guardarMetadatos($docData, $mensaje_cdr) {
 }
 
 // LEER JSON DESDE n8n
+// LEER JSON DESDE n8n (CON LIMPIEZA)
+$jsonInput = file_get_contents('php://input');
+
 // AÑADIR LIMPIEZA: Elimina el BOM (Byte Order Mark) y otros caracteres invisibles
 $jsonInput = trim($jsonInput, "\xEF\xBB\xBF");
 
 $data = json_decode($jsonInput, true);
 
 if (!$data) {
-    // Si la decodificación falla, devuelve el error exacto de PHP y el JSON que recibió.
     echo json_encode([
         'estado_sunat' => 'ERROR',
-        'mensaje_sunat' => 'JSON inválido: ' . json_last_error_msg(),
-        // Línea TEMPORAL para DEPURACIÓN
-        'json_recibido_log' => $jsonInput 
+        'mensaje_sunat' => 'JSON inválido: ' . json_last_error_msg()
     ]);
     exit;
 }
